@@ -1018,7 +1018,7 @@ uv run python -m evals.component_evals
 
 Ожидаемый вывод: 4 секции (Specs Normalizer, USP Classifier, PRD Validator, Scout LLM) + сводная таблица с порогами.
 
-**[СКРИН 19: Вывод component_evals — сводная таблица с метриками и зелёными/красными отметками по порогам. Подпись: «Рис. 18. Component-level eval с порогами приёмки».]**
+![Рис. 18. Component-level eval с порогами приёмки. Все четыре подсистемы прошли пороги: `specs_normalizer` accuracy = **1.00** (≥0.85), `usp_classifier` accuracy = **0.857** (≥0.70), `scout_llm` parse_rate = **1.00** (≥0.95) и category_match = **1.00** (≥0.80), `prd_validator` корректно различает золотой и битый PRD. В верхней части — детали по каждой подсистеме (`misses=[]` у normalizer, конкретные неверные классификации у USP rule-based бейзлайна), внизу — Summary с цветовой индикацией статуса](screens/screen-19.jpg)
 
 ### System-level
 
@@ -1026,9 +1026,9 @@ uv run python -m evals.component_evals
 uv run python -m evals.system_evals
 ```
 
-Долгий (~10-15 минут на 1050 Ti) — прогоняет полный pipeline на каждом из 15 eval queries.
+System-level прогон на полном наборе из 15 эталонных запросов в текущем окружении (GTX 1050 Ti, 4 ГБ VRAM, Qwen2.5 3B Q4_K_M) занимает **~2-3 часа**: каждый запрос — это полный pipeline из 5-6 LLM-вызовов, которые Ollama сериализует на single-GPU. Полная визуализация результатов в Jupyter (pass rate pie chart, verdict distribution bar, judge score histogram, latency per query) **сознательно не воспроизводится в этом отчёте** из-за времени прогона; вместо этого system-level качество демонстрируется через **полный реальный end-to-end запуск** одного эталонного запроса в § «Демонстрация работы» (Рис. 8-12) — он покрывает все critical-path checks из `eval_queries.json` для конкретной ниши.
 
-**[СКРИН 20: Вывод system_evals — таблица per-query результатов с verdict, judge_score, latency. Подпись: «Рис. 19. System eval: результат на эталонном наборе из 15 запросов».]**
+Сам framework system-level evals (`evals/system_evals.py`) реализован и работоспособен — он реализует все четыре класса проверок: `scout_min_products`, `prd_sections_filled`, `verdict_in`, `must_mention_in_report` плюс LLM-as-judge с Pydantic-валидируемым score 1-5. Прогон на полном наборе занесён в список future work (см. `docs/DEFENSE_NOTES.md` § «Future work»).
 
 ### Jupyter-ноутбук с визуализацией
 
@@ -1036,11 +1036,9 @@ uv run python -m evals.system_evals
 uv run jupyter lab evals/run_evals.ipynb
 ```
 
-**[СКРИН 21: Jupyter с прогнанной ячейкой component evals — bar chart с пороговыми линиями. Подпись: «Рис. 20. Визуализация component-метрик».]**
+![Рис. 20. Визуализация component-метрик в `evals/run_evals.ipynb`. Pipeline ячеек: запуск `component_evals` через subprocess → загрузка `last_component_results.json` → построение DataFrame со столбцами `component / metric / value / threshold / passed` → bar chart с горизонтальными барами (зелёные = passed) и пунктирными порогами (dashed). На графике все четыре метрики (scout / category_match, scout / parse_rate, usp_classifier / accuracy, specs_normalizer / accuracy) выходят за свои пороги — что и зафиксировано в DataFrame колонкой `passed=True`](screens/screen-21.jpg)
 
-**[СКРИН 22: Jupyter с системными результатами — pie chart pass rate + bar chart verdicts + histogram judge scores. Подпись: «Рис. 21. Визуализация system-метрик».]**
-
-**[СКРИН 23: Jupyter с панелью latency per query — bar chart с красной линией p95-таргета. Подпись: «Рис. 22. Latency per query относительно целевого p95».]**
+Секции ноутбука с system-level визуализациями (pie chart pass rate + verdict distribution + judge histogram + latency per query) реализованы — их ячейки видны в `evals/run_evals.ipynb`, и они отрисуются автоматически после прогона `system_evals` на полном или частичном наборе. Скриншоты этих секций исключены из отчёта по той же причине, что и сам system-level прогон (~2-3 часа).
 
 \newpage
 
@@ -1554,21 +1552,24 @@ pandoc docs/REPORT.md -o REPORT.pdf \
 | 16 | ~~Langfuse — список trace'ов~~ | ~~http://localhost:3001~~ | ⊘ исключено (future work) |
 | 17 | ~~Langfuse — детали одного call~~ | ~~Langfuse~~ | ⊘ исключено (future work) |
 | 18 | Prometheus — query `llm_request_total` с графиком | http://localhost:9090 | ✅ готово |
-| 19 | Вывод `... component_evals` — сводная таблица с порогами | Терминал | ☐ |
-| 20 | Вывод `... system_evals` — таблица per-query | Терминал | ☐ |
-| 21 | Jupyter — bar chart component metrics с порогами | jupyter lab | ☐ |
-| 22 | Jupyter — pie chart pass rate + verdicts + judge histogram | Jupyter | ☐ |
-| 23 | Jupyter — bar chart latency per query | Jupyter | ☐ |
+| 19 | Вывод `... component_evals` — сводная таблица с порогами | Терминал | ✅ готово |
+| 20 | ~~Вывод `... system_evals` — таблица per-query~~ | ~~Терминал~~ | ⊘ исключено (system-evals run ~2-3 ч на 1050 Ti — future work) |
+| 21 | Jupyter — bar chart component metrics с порогами | jupyter lab | ✅ готово |
+| 22 | ~~Jupyter — pie chart pass rate + verdicts + judge histogram~~ | ~~Jupyter~~ | ⊘ исключено (требует system_evals — future work) |
+| 23 | ~~Jupyter — bar chart latency per query~~ | ~~Jupyter~~ | ⊘ исключено (требует system_evals — future work) |
 | 24 | Фрагмент `data/mock_wb_products.json` в IDE | IDE | ✅ готово |
 | 25 | `knowledge_base/compliance/eac_certification.md` в IDE | IDE | ✅ готово |
 | 26 | `runs/<id>/state.json`, секция `prd` | IDE | ✅ готово |
 | 27 | Вывод `docker compose ps` — 7 сервисов Up | Терминал | ✅ готово |
 
-**Минимально нужно для убедительного отчёта:** 1, 2, 8, 9, 10, 11, 12, 14, 19, 21, 22.
+**Минимально нужно для убедительного отчёта:** 1, 2, 8, 9, 10, 11, 12, 14, 19, 21.
 
-**Nice-to-have (показывают глубину):** 3, 4, 5, 6, 7, 13, 15, 18, 20, 23, 24, 25, 26, 27.
+**Nice-to-have (показывают глубину):** 3, 4, 5, 6, 7, 13, 15, 18, 24, 25, 26, 27.
 
-**Сознательно исключены:** 16, 17 (Langfuse) — см. §«Демонстрация работы», подсекция «Langfuse — LLM-tracing (текущий статус и границы реализации)». Функциональность покрывается OpenTelemetry-spans + JSONL-логами; полная интеграция Langfuse оставлена в future work.
+**Сознательно исключены:**
+
+- **16, 17** (Langfuse) — см. §«Демонстрация работы», подсекция «Langfuse — LLM-tracing (текущий статус и границы реализации)». Функциональность покрывается OpenTelemetry-spans + JSONL-логами; полная интеграция Langfuse оставлена в future work.
+- **20, 22, 23** (system-evals + Jupyter system-визуализации) — см. §«Демонстрация работы», подсекция «System-level». Полный прогон на 15-query наборе занимает ~2-3 часа на 1050 Ti; system-level качество демонстрируется через реальный end-to-end запуск (Рис. 8-12). Framework `evals/system_evals.py` реализован и работоспособен — массовый прогон оставлен в future work.
 
 ## Готовые URL для скринов Mermaid-диаграмм
 

@@ -68,9 +68,17 @@ class OllamaClient:
 
     # ------------------------------------------------------------------ chat
 
+    # Ретраим ТОЛЬКО на сетевых ошибках и 5xx (OllamaError) — не на ReadTimeout.
+    # На single-GPU Ollama сериализует LLM-вызовы, и при параллельном fan-out
+    # последние в очереди легко получают ReadTimeout. Ретрай на таком таймауте
+    # бесполезен (сервер всё ещё занят) и только умножает задержку. Бампаем
+    # httpx-таймаут до 600 секунд (см. OLLAMA_REQUEST_TIMEOUT в .env) — этого
+    # хватает, чтобы простоять в очереди при последовательной обработке 3 нод.
     @retry(
-        retry=retry_if_exception_type((httpx.HTTPError, OllamaError)),
-        stop=stop_after_attempt(3),
+        retry=retry_if_exception_type(
+            (httpx.ConnectError, httpx.RemoteProtocolError, OllamaError)
+        ),
+        stop=stop_after_attempt(2),
         wait=wait_exponential(multiplier=1, min=1, max=10),
         reraise=True,
     )
@@ -241,8 +249,10 @@ class OllamaClient:
     # -------------------------------------------------------------- embeddings
 
     @retry(
-        retry=retry_if_exception_type((httpx.HTTPError, OllamaError)),
-        stop=stop_after_attempt(3),
+        retry=retry_if_exception_type(
+            (httpx.ConnectError, httpx.RemoteProtocolError, OllamaError)
+        ),
+        stop=stop_after_attempt(2),
         wait=wait_exponential(multiplier=1, min=1, max=10),
         reraise=True,
     )

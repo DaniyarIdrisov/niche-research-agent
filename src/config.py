@@ -24,7 +24,10 @@ class Settings(BaseSettings):
     ollama_llm_model: str = "qwen2.5:3b-instruct-q4_K_M"
     ollama_embed_model: str = "nomic-embed-text"
     ollama_num_ctx: int = 4096
-    ollama_request_timeout: int = 120
+    # На single-GPU (1050 Ti) с параллельным fan-out Ollama сериализует LLM-
+    # вызовы, и последний в очереди может ждать 6+ минут. 600 секунд (10 мин)
+    # — безопасный потолок, который не падает на нормальной нагрузке.
+    ollama_request_timeout: int = 600
 
     # --- ChromaDB ---
     chroma_host: str = "localhost"

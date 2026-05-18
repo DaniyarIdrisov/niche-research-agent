@@ -1,7 +1,7 @@
 ---
 title: "Мультиагентная система для ресёрча ниши на Wildberries: проектирование, реализация и оценка"
 subtitle: "Отчёт по проектной работе"
-author: "Студент: _____________"
+author: "Идрисов Данияр Фаритович, группа 11-561"
 date: "2026"
 toc: true
 toc-depth: 3
@@ -17,6 +17,14 @@ header-includes:
   - \usepackage{xcolor}
   - \lstset{basicstyle=\ttfamily\small,breaklines=true,frame=single,backgroundcolor=\color{gray!10}}
 ---
+
+\newpage
+
+**Автор:** Идрисов Данияр Фаритович, группа 11-561
+
+**Репозиторий проекта:** [https://github.com/DaniyarIdrisov/niche-research-agent](https://github.com/DaniyarIdrisov/niche-research-agent)
+
+**Документация проекта:** [https://github.com/DaniyarIdrisov/niche-research-agent/tree/main/docs](https://github.com/DaniyarIdrisov/niche-research-agent/tree/main/docs)
 
 \newpage
 

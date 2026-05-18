@@ -13,12 +13,12 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
 from loguru import logger
 
 from src.config import PROJECT_ROOT
 from src.llm.ollama_client import OllamaClient, StructuredOutputError
-from src.memory.working import add_error
 from src.schemas.analysis import UspItem, UspMatrix
 from src.schemas.state import AgentState
 from src.tools.usp_classifier import (
@@ -55,15 +55,15 @@ def usp_analyst_node(state: AgentState) -> AgentState:
     logger.info("usp_analyst.start", top_n=len(top))
 
     if not top:
-        return {**state, "usp_analysis": None}
+        return {"usp_analysis": None}
 
     baseline = _extract_baseline(top)
     if not baseline:
         empty = UspMatrix()
-        return {**state, "usp_analysis": empty.model_dump()}
+        return {"usp_analysis": empty.model_dump()}
 
     llm_input = {"items": [it.model_dump() for it in baseline]}
-    errors = list(state.get("errors", []))
+    new_errors: list[str] = []
 
     try:
         with OllamaClient() as llm:
@@ -79,7 +79,7 @@ def usp_analyst_node(state: AgentState) -> AgentState:
     except StructuredOutputError as e:
         # Fallback: оставляем baseline-классификацию + считаем распределение и gaps сами
         logger.warning("usp_analyst.llm_failed_fallback", error=str(e))
-        errors = add_error(state, f"usp_analyst: LLM failed, kept rule-based ({e})")
+        new_errors.append(f"usp_analyst: LLM failed, kept rule-based ({e})")
         dist = type_distribution(baseline)
         matrix = UspMatrix(
             items=baseline,
@@ -98,4 +98,8 @@ def usp_analyst_node(state: AgentState) -> AgentState:
         n_items=len(matrix.items),
         gaps=matrix.gaps,
     )
-    return {**state, "usp_analysis": matrix.model_dump(), "errors": errors}
+    # Только свой ключ — иначе конфликт записи с niche_analyst/specs_miner.
+    out: dict[str, Any] = {"usp_analysis": matrix.model_dump()}
+    if new_errors:
+        out["errors"] = new_errors  # reducer (add) сконкатенирует
+    return out

@@ -18,7 +18,6 @@ from loguru import logger
 
 from src.config import PROJECT_ROOT
 from src.llm.ollama_client import OllamaClient, OllamaError
-from src.memory.working import add_error
 from src.schemas.state import AgentState
 
 PROMPT_PATH = PROJECT_ROOT / "prompts" / "reporter.md"
@@ -56,7 +55,7 @@ def reporter_node(state: AgentState) -> AgentState:
     if not products:
         report, verdict = _no_data_report(state)
         logger.info("reporter.no_data")
-        return {**state, "report": report, "verdict": verdict}
+        return {"report": report, "verdict": verdict}
 
     llm_input = {
         "query": state.get("query"),
@@ -67,7 +66,7 @@ def reporter_node(state: AgentState) -> AgentState:
         "prd": state.get("prd"),
     }
 
-    errors = list(state.get("errors", []))
+    new_errors: list[str] = []
     try:
         with OllamaClient() as llm:
             report = llm.chat_text(
@@ -79,7 +78,7 @@ def reporter_node(state: AgentState) -> AgentState:
             )
     except OllamaError as e:
         logger.warning("reporter.llm_failed", error=str(e))
-        errors = add_error(state, f"reporter: LLM failed ({e})")
+        new_errors.append(f"reporter: LLM failed ({e})")
         # Минимальный фоллбэк — машинный отчёт из метрик
         report = _machine_fallback_report(state)
 
@@ -95,7 +94,10 @@ def reporter_node(state: AgentState) -> AgentState:
         report = report.rstrip() + f"\n\n**Verdict:** {verdict}\n"
 
     logger.info("reporter.done", verdict=verdict, length=len(report))
-    return {**state, "report": report, "verdict": verdict, "errors": errors}
+    out: dict = {"report": report, "verdict": verdict}
+    if new_errors:
+        out["errors"] = new_errors
+    return out
 
 
 def _heuristic_verdict(state: AgentState) -> str:

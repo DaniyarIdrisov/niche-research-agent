@@ -16,7 +16,8 @@ TypedDict (см. add_messages / встроенный reducer). Под-объек
 
 from __future__ import annotations
 
-from typing import Any, TypedDict
+from operator import add
+from typing import Annotated, Any, TypedDict
 
 from src.schemas.filters import QueryFilters
 from src.schemas.product import Product
@@ -47,7 +48,12 @@ class AgentState(TypedDict, total=False):
     report: str
 
     # --- control / observability ---
-    errors: list[str]              # человекочитаемые ошибки от агентов / валидаторов
+    # errors снабжён reducer'ом (operator.add для list = конкатенация). Это нужно
+    # потому что три параллельные ноды (niche/specs/usp) могут одновременно
+    # дописать в errors после fan-out — без reducer'а LangGraph бы упал с
+    # InvalidUpdateError. Каждая нода возвращает ТОЛЬКО НОВЫЕ errors одним списком.
+    errors: Annotated[list[str], add]
+
     retries: dict[str, int]        # счётчик попыток на ноду {"scout": 1}
     verdict: str                   # "go" | "no-go" | "conditional-go" | "no-data"
 

@@ -49,7 +49,7 @@ def scout_node(state: AgentState) -> AgentState:
         {"role": "user", "content": query},
     ]
 
-    errors = list(state.get("errors", []))
+    new_errors: list[str] = []
 
     try:
         with OllamaClient() as llm:
@@ -65,19 +65,17 @@ def scout_node(state: AgentState) -> AgentState:
         # либо ретрайнет Scout, либо отдаст пользователю мягкую ошибку.
         logger.warning("scout.llm_parse_failed_fallback", error=str(e))
         filters = QueryFilters(category="unknown", keywords=[query])
-        errors.append(f"scout: LLM parse failed, fell back to keyword search ({e})")
+        new_errors.append(f"scout: LLM parse failed, fell back to keyword search ({e})")
 
     logger.info("scout.filters", filters=filters.model_dump())
 
     products = search_products(filters)
     logger.info("scout.products_found", n=len(products))
 
-    return {
-        **state,
-        "filters": filters,
-        "products": products,
-        "errors": errors,
-    }
+    out: dict = {"filters": filters, "products": products}
+    if new_errors:
+        out["errors"] = new_errors  # reducer (add) сконкатенирует
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -109,17 +107,16 @@ def validate_scout_node(state: AgentState) -> AgentState:
     Помечает в state нужен ли retry. Решение о ребре — в conditional_edge ниже.
     """
     valid = _is_valid_scout_output(state)
+    if valid:
+        logger.info("scout.validation_ok", products=len(state.get("products", [])))
+        return {}
+
     retries = dict(state.get("retries", {}))
     n_done = retries.get("scout", 0)
-    if not valid:
-        retries["scout"] = n_done + 1
-        msg = (
-            f"scout: validation failed (attempt {n_done + 1}). "
-            f"filters={state.get('filters')}, products={len(state.get('products', []))}"
-        )
-        logger.warning("scout.validation_failed", attempt=n_done + 1)
-        errors = [*state.get("errors", []), msg]
-    else:
-        errors = state.get("errors", [])
-        logger.info("scout.validation_ok", products=len(state.get("products", [])))
-    return {**state, "retries": retries, "errors": errors}
+    retries["scout"] = n_done + 1
+    msg = (
+        f"scout: validation failed (attempt {n_done + 1}). "
+        f"filters={state.get('filters')}, products={len(state.get('products', []))}"
+    )
+    logger.warning("scout.validation_failed", attempt=n_done + 1)
+    return {"retries": retries, "errors": [msg]}

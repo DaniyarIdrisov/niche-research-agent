@@ -13,13 +13,14 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
 from loguru import logger
 from pydantic import BaseModel, Field
 
 from src.config import PROJECT_ROOT
 from src.llm.ollama_client import OllamaClient, StructuredOutputError
-from src.memory.working import add_error, increment_retry
+from src.memory.working import increment_retry
 from src.schemas.analysis import NicheInsight, NicheMetrics
 from src.schemas.state import AgentState
 from src.tools.calculator import summarize
@@ -65,7 +66,7 @@ def niche_analyst_node(state: AgentState) -> AgentState:
     }
 
     insights: list[NicheInsight] = []
-    errors = list(state.get("errors", []))
+    new_errors: list[str] = []
 
     try:
         with OllamaClient() as llm:
@@ -81,7 +82,7 @@ def niche_analyst_node(state: AgentState) -> AgentState:
         insights = list(resp.insights)
     except StructuredOutputError as e:
         logger.warning("niche_analyst.llm_failed", error=str(e))
-        errors = add_error(state, f"niche_analyst: LLM insights failed ({e})")
+        new_errors.append(f"niche_analyst: LLM insights failed ({e})")
 
     metrics = NicheMetrics(
         n_products=llm_input["n_products"],
@@ -105,7 +106,12 @@ def niche_analyst_node(state: AgentState) -> AgentState:
         median=metrics.price_median,
         insights=len(insights),
     )
-    return {**state, "niche_metrics": metrics.model_dump(), "errors": errors}
+    # Возвращаем ТОЛЬКО свои ключи — иначе при параллельном fan-out с
+    # specs_miner/usp_analyst LangGraph падает на конфликте записи `query`.
+    out: dict[str, Any] = {"niche_metrics": metrics.model_dump()}
+    if new_errors:
+        out["errors"] = new_errors  # reducer (add) сконкатенирует с существующими
+    return out
 
 
 def validate_niche_node(state: AgentState) -> AgentState:
@@ -116,5 +122,5 @@ def validate_niche_node(state: AgentState) -> AgentState:
         retries = increment_retry(state, "niche_analyst")
         msg = f"niche_analyst: metrics missing (attempt {retries['niche_analyst']})"
         logger.warning("niche_analyst.validation_failed")
-        return {**state, "retries": retries, "errors": add_error(state, msg)}
-    return state
+        return {"retries": retries, "errors": [msg]}
+    return {}

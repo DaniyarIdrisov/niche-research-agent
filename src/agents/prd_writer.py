@@ -17,7 +17,7 @@ from loguru import logger
 
 from src.config import PROJECT_ROOT
 from src.llm.ollama_client import OllamaClient, StructuredOutputError
-from src.memory.working import add_error, increment_retry
+from src.memory.working import increment_retry
 from src.schemas.analysis import PRD
 from src.schemas.state import AgentState
 from src.tools.prd_validator import validate_prd
@@ -69,7 +69,7 @@ def _summarize_usp(usp: dict | None) -> dict:
 def prd_writer_node(state: AgentState) -> AgentState:
     if not state.get("products"):
         # Нет данных — пропускаем PRD
-        return {**state, "prd": None}
+        return {"prd": None}
 
     filters = state.get("filters")
     category = filters.category if filters is not None else "unknown"
@@ -82,7 +82,6 @@ def prd_writer_node(state: AgentState) -> AgentState:
     }
     logger.info("prd_writer.start", category=category)
 
-    errors = list(state.get("errors", []))
     try:
         with OllamaClient() as llm:
             prd = llm.chat_structured(
@@ -96,8 +95,7 @@ def prd_writer_node(state: AgentState) -> AgentState:
             )
     except StructuredOutputError as e:
         logger.warning("prd_writer.failed", error=str(e))
-        errors = add_error(state, f"prd_writer: LLM failed ({e})")
-        return {**state, "prd": None, "errors": errors}
+        return {"prd": None, "errors": [f"prd_writer: LLM failed ({e})"]}
 
     logger.info(
         "prd_writer.done",
@@ -105,7 +103,7 @@ def prd_writer_node(state: AgentState) -> AgentState:
         nice=len(prd.nice_to_have_specs),
         diff=len(prd.differentiation),
     )
-    return {**state, "prd": prd.model_dump(), "errors": errors}
+    return {"prd": prd.model_dump()}
 
 
 def validate_prd_node(state: AgentState) -> AgentState:
@@ -118,7 +116,7 @@ def validate_prd_node(state: AgentState) -> AgentState:
         retries = increment_retry(state, "prd_writer")
         msg = f"prd_writer: PRD missing (attempt {retries['prd_writer']})"
         logger.warning("prd_writer.validation_failed")
-        return {**state, "retries": retries, "errors": add_error(state, msg)}
+        return {"retries": retries, "errors": [msg]}
 
     if prd:
         report = validate_prd(prd)
@@ -129,7 +127,7 @@ def validate_prd_node(state: AgentState) -> AgentState:
                 f"(attempt {retries['prd_writer']})"
             )
             logger.warning("prd_writer.validation_failed", missing=report["missing_sections"])
-            return {**state, "retries": retries, "errors": add_error(state, msg)}
+            return {"retries": retries, "errors": [msg]}
         for w in report["warnings"]:
             logger.info("prd_writer.validation_warning", message=w)
-    return state
+    return {}

@@ -14,12 +14,12 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
 from loguru import logger
 
 from src.config import PROJECT_ROOT
 from src.llm.ollama_client import OllamaClient, StructuredOutputError
-from src.memory.working import add_error
 from src.schemas.analysis import SpecFrequency, SpecsSummary
 from src.schemas.state import AgentState
 from src.tools.specs_normalizer import frequency_table
@@ -53,7 +53,7 @@ def specs_miner_node(state: AgentState) -> AgentState:
     logger.info("specs_miner.start", top_n=len(top))
 
     if not top:
-        return {**state, "specs_summary": None}
+        return {"specs_summary": None}
 
     raw_specs = [p.specs if hasattr(p, "specs") else p["specs"] for p in top]
     freq_dict = frequency_table(raw_specs, top_n=len(top))
@@ -72,17 +72,14 @@ def specs_miner_node(state: AgentState) -> AgentState:
     if not rows:
         # Все specs были не из нашей taxonomy — нечего раскладывать
         logger.warning("specs_miner.empty_frequencies")
-        return {
-            **state,
-            "specs_summary": SpecsSummary(top_n=len(top)).model_dump(),
-        }
+        return {"specs_summary": SpecsSummary(top_n=len(top)).model_dump()}
 
     llm_input = {
         "top_n": len(top),
         "frequencies": [r.model_dump() for r in rows],
     }
 
-    errors = list(state.get("errors", []))
+    new_errors: list[str] = []
     try:
         with OllamaClient() as llm:
             summary = llm.chat_structured(
@@ -96,7 +93,7 @@ def specs_miner_node(state: AgentState) -> AgentState:
             )
     except StructuredOutputError as e:
         logger.warning("specs_miner.llm_failed_fallback", error=str(e))
-        errors = add_error(state, f"specs_miner: LLM failed, used threshold fallback ({e})")
+        new_errors.append(f"specs_miner: LLM failed, used threshold fallback ({e})")
         summary = _fallback_split(rows)
 
     logger.info(
@@ -105,4 +102,8 @@ def specs_miner_node(state: AgentState) -> AgentState:
         nice=len(summary.nice_to_have),
         rare=len(summary.rare),
     )
-    return {**state, "specs_summary": summary.model_dump(), "errors": errors}
+    # Только свой ключ — иначе конфликт записи с niche_analyst/usp_analyst при fan-out.
+    out: dict[str, Any] = {"specs_summary": summary.model_dump()}
+    if new_errors:
+        out["errors"] = new_errors  # reducer (add) сконкатенирует
+    return out

@@ -19,7 +19,7 @@ dependencies = [
     "pydantic-settings>=2.6.0",
 
     # Memory / RAG
-    "chromadb>=0.5.20",
+    "chromadb>=0.5.20,<0.6",     # клиент должен быть в той же мажорной линии, что и сервер (0.5.x в docker-compose)
     "rank-bm25>=0.2.2",
     "sentence-transformers>=3.3.0",         # для опционального ререйнкера
 

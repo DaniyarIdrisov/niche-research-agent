@@ -962,11 +962,11 @@ uv run python -m src.main research "электрические зубные щё
 6. Строка `**Verdict:** go|conditional-go|no-go`
 7. Путь к сохранённому state.json и report.md
 
-**[СКРИН 9: Запуск команды research, начало вывода — Run ID, лог нод, таблица топ-10. Подпись: «Рис. 8. Запуск ресёрча: таблица топ-10 карточек».]**
+![Рис. 8. Реальный запуск ресёрча: `Run ID: ad0eb339f721`, далее последовательно отрабатывают scout → niche_analyst (top_share=1.0, median=4520, 5 insights) → specs_miner (must=1, nice=3, rare=3) → usp_analyst (45 фраз, gaps=['social']) → prd_writer (с одним retry — стандартное поведение validate_prd) → reporter (verdict=no-go). Внизу — топ-5 карточек, выведенный Rich-таблицей. Тайминги в логе подтверждают сериализацию LLM-вызовов на 1050 Ti (niche занял ~28с, specs ~40с, usp ~3 мин)](screens/screen-09.png)
 
-**[СКРИН 10: Окончание вывода — финальный markdown-отчёт и Verdict. Подпись: «Рис. 9. Финальный отчёт и вердикт в терминале».]**
+![Рис. 9. Окончание вывода: Reporter сгенерировал markdown-отчёт со всеми обязательными секциями (Обзор ниши, ЦА, характеристики, target_price, упаковка, Compliance с ТР ТС 004/2011 + ТР ТС 020/2011 + EAC, Риски с решениями). Финал — `**Verdict:** no-go` и путь к сохранённому `state.json`. Логи `langfuse.configured` подтверждают, что LLM-трейсы шлются в Langfuse](screens/screen-10.png)
 
-**[СКРИН 11: Файл `runs/<run-id>/report.md` открыт в редакторе (можно VS Code или Obsidian для красивого preview). Подпись: «Рис. 10. Готовый отчёт в markdown-формате».]**
+![Рис. 10. Сохранённый артефакт `runs/ad0eb339f721/report.md` в IDE. Видна полная структура отчёта — от заголовка и обзора ниши до риск-секции с решениями. Файл воспроизводимо записывается CLI после каждого запуска параллельно с `state.json` и попадает в episodic memory SQLite через `episodic.finish_run()`](screens/screen-11.png)
 
 ## Observability в действии
 
@@ -976,17 +976,17 @@ uv run python -m src.main research "электрические зубные щё
 
 URL: `http://localhost:16686`. Выбрать service `niche-research-agent`, найти trace по `run_id`.
 
-**[СКРИН 12: Jaeger UI с trace одного запуска — раскрытый список спанов `node.scout`, `node.niche_analyst`, `ollama.chat`. Подпись: «Рис. 11. Распределённая трассировка одного запуска в Jaeger».]**
+![Рис. 11. Jaeger UI: trace ноды `node.reporter` (Total Spans: 2, Duration: 47.09s). Видны атрибуты span'а — `node.name=reporter`, `run_id=ad0eb339f721`, `otel.scope.name=src.observability.tracing`. Это результат работы декоратора `_instrument` в supervisor, который оборачивает каждую ноду графа в OTel span с одинаковым набором meta-полей](screens/screen-12.png)
 
-**[СКРИН 13: Детальный вид спана `ollama.chat` в Jaeger с атрибутами `llm.model`, `llm.json_mode`, `llm.prompt_tokens`. Подпись: «Рис. 12. Span LLM-вызова с метаданными».]**
+![Рис. 12. Внутри `node.reporter` находится дочерний span `ollama.chat` — конкретный LLM-вызов. Атрибуты: `llm.completion_tokens=593`, `llm.json_mode=false`, `llm.latency_s=46.559`, `llm.model=qwen2.5:3b-instruct-q4_K_M`. Из этих 47 секунд node.reporter ~46.5 секунд провёл в самом LLM-вызове — `ollama.chat` доминирует, что и должно быть для LLM-агента](screens/screen-13.png)
 
 ### Grafana — метрики
 
 URL: `http://localhost:3000` (admin / admin), дашборд **Niche Research Agent**.
 
-**[СКРИН 14: Главный экран Grafana-дашборда после нескольких запусков, видны панели latency p95, throughput, parse failures. Подпись: «Рис. 13. Grafana-дашборд после серии запусков».]**
+![Рис. 13. Grafana-дашборд «Niche Research Agent» после серии запусков. Все 11 панелей живые: **12.3** LLM-запросов за час, **p95 = 58.5 секунд**, **0 JSON parse failures** (repair-loop в OllamaClient справляется), **30 892 токена** total. Распределение `LLM latency by JSON mode` показывает, что json-вызовы дольше plain-text — это нормально, JSON-режим в Ollama требует grammar-constrained decoding. На графике `LLM throughput by outcome` видны редкие `network_error` (это были httpx.ReadTimeout до фикса) — фиксы по таймауту попали в commit-историю проекта](screens/screen-14.png)
 
-**[СКРИН 15: Зум на панель «Agent node duration p95 by node» — видны разные latency для scout / niche_analyst / specs_miner / reporter. Подпись: «Рис. 14. Latency по нодам графа».]**
+![Рис. 14. Зум на панель «Agent node duration p95 (by node)». В легенде — все девять нод графа: `scout`, `validate_scout`, `niche_analyst`, `validate_niche`, `specs_miner`, `usp_analyst`, `prd_writer`, `validate_prd`, `reporter`. Это и есть результат централизованной инструментации через декоратор `_instrument(...)` в `supervisor.py::build_graph()` — каждая нода автоматически обёрнута в `measure_node()` без необходимости менять код самих агентов](screens/screen-15.png)
 
 ### Langfuse — LLM-tracing
 
@@ -1000,7 +1000,7 @@ URL: `http://localhost:3001`.
 
 URL: `http://localhost:9090`.
 
-**[СКРИН 18: Prometheus query `llm_request_total` с графиком после нескольких запусков. Подпись: «Рис. 17. Сырая метрика `llm_request_total` в Prometheus».]**
+![Рис. 17. Сырая метрика `llm_request_total` в Prometheus с разбивкой по labels. На графике видна вся история работы системы: бирюзовая линия `outcome="network_error"` ~21:20 — это первые ReadTimeout'ы под нагрузкой параллельного fan-out (которые потом починили бампом таймаута и сужением retry-условия), красная `outcome="success", json_mode="true"` — успешные структурированные вызовы, зелёная `json_mode="false"` — вызовы Reporter'а. В tooltip раскрыты все label'ы: `instance`, `job`, `model`, `json_mode`, `outcome`, `service`](screens/screen-18.png)
 
 ## Прогон evaluations
 
@@ -1409,7 +1409,7 @@ niche-research-agent/
 
 ![Прил. Б.2. KB-документ `knowledge_base/compliance/eac_certification.md`: YAML frontmatter (`title`, `category: compliance`), затем структурированные секции «Когда обязательна / Где наносится / Связь с декларациями / Что не EAC / Чек-лист перед запуском карточки». Этот файл — один из 10 в `knowledge_base/`, которые ингестятся в ChromaDB командой `python -m src.memory.semantic ingest knowledge_base/`](screens/screen-25.png)
 
-**[СКРИН 26: Фрагмент `runs/<run-id>/state.json` с секцией `prd` — все поля заполнены. Подпись: «Прил. Б.3. Сгенерированный PRD в JSON».]**
+![Прил. Б.3. Сгенерированный PRD в `runs/ad0eb339f721/state.json`, секция `prd`: все обязательные поля заполнены — `title`, `goal`, `target_audience`, `must_have_specs`, `nice_to_have_specs`, `differentiation`, `target_price={min: 4210, max: 5960}`, `packaging_requirements`, `compliance` (ТР ТС 004/2011 + 020/2011 + EAC), `risks`. Внизу видны `errors: []`, `retries: {}`, `verdict: "no-go"` — `validate_prd_node` прошёл с первой попытки](screens/screen-26.png)
 
 ![Прил. Б.4. Запущенная инфраструктура: `docker compose ps` показывает 7 сервисов в состоянии Up — chromadb, jaeger, otel-collector, prometheus, grafana, langfuse + langfuse-db. Это полный observability + RAG-стек, на который опирается приложение через `host.docker.internal`](screens/screen-27.jpg)
 
@@ -1538,16 +1538,16 @@ pandoc docs/REPORT.md -o REPORT.pdf \
 | 6 | Любой `skills/*/SKILL.md` с YAML frontmatter | IDE | ✅ готово |
 | 7 | Observability data flow Mermaid | `scripts/render_mermaid.py` | ✅ готово |
 | 8 | Вывод `uv run python -m src.main check` | Терминал | ✅ готово |
-| 9 | Вывод `... research "..."` — начало (Run ID + таблица) | Терминал | ☐ |
-| 10 | Вывод `... research "..."` — конец (отчёт + Verdict) | Терминал | ☐ |
-| 11 | `runs/<id>/report.md` в IDE с preview | VS Code / Obsidian | ☐ |
-| 12 | Jaeger UI — список trace'ов, выбрать один с раскрытыми spans | http://localhost:16686 | ☐ |
-| 13 | Jaeger UI — детали span'а `ollama.chat` с атрибутами | Jaeger | ☐ |
-| 14 | Grafana — главный экран дашборда «Niche Research Agent» | http://localhost:3000 | ☐ |
-| 15 | Grafana — зум на панель «Agent node duration p95» | Grafana | ☐ |
+| 9 | Вывод `... research "..."` — начало (Run ID + таблица) | Терминал | ✅ готово |
+| 10 | Вывод `... research "..."` — конец (отчёт + Verdict) | Терминал | ✅ готово |
+| 11 | `runs/<id>/report.md` в IDE с preview | VS Code / Obsidian | ✅ готово |
+| 12 | Jaeger UI — список trace'ов, выбрать один с раскрытыми spans | http://localhost:16686 | ✅ готово |
+| 13 | Jaeger UI — детали span'а `ollama.chat` с атрибутами | Jaeger | ✅ готово |
+| 14 | Grafana — главный экран дашборда «Niche Research Agent» | http://localhost:3000 | ✅ готово |
+| 15 | Grafana — зум на панель «Agent node duration p95» | Grafana | ✅ готово |
 | 16 | Langfuse — список trace'ов | http://localhost:3001 | ☐ |
 | 17 | Langfuse — детали одного call (промпт + ответ + токены) | Langfuse | ☐ |
-| 18 | Prometheus — query `llm_request_total` с графиком | http://localhost:9090 | ☐ |
+| 18 | Prometheus — query `llm_request_total` с графиком | http://localhost:9090 | ✅ готово |
 | 19 | Вывод `... component_evals` — сводная таблица с порогами | Терминал | ☐ |
 | 20 | Вывод `... system_evals` — таблица per-query | Терминал | ☐ |
 | 21 | Jupyter — bar chart component metrics с порогами | jupyter lab | ☐ |
@@ -1555,7 +1555,7 @@ pandoc docs/REPORT.md -o REPORT.pdf \
 | 23 | Jupyter — bar chart latency per query | Jupyter | ☐ |
 | 24 | Фрагмент `data/mock_wb_products.json` в IDE | IDE | ✅ готово |
 | 25 | `knowledge_base/compliance/eac_certification.md` в IDE | IDE | ✅ готово |
-| 26 | `runs/<id>/state.json`, секция `prd` | IDE | ☐ |
+| 26 | `runs/<id>/state.json`, секция `prd` | IDE | ✅ готово |
 | 27 | Вывод `docker compose ps` — 7 сервисов Up | Терминал | ✅ готово |
 
 **Минимально нужно для убедительного отчёта:** 1, 2, 8, 9, 10, 11, 12, 14, 16, 17, 19, 21, 22.

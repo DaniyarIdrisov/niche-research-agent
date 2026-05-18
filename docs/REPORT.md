@@ -1411,7 +1411,7 @@ niche-research-agent/
 
 **[СКРИН 26: Фрагмент `runs/<run-id>/state.json` с секцией `prd` — все поля заполнены. Подпись: «Прил. Б.3. Сгенерированный PRD в JSON».]**
 
-![Прил. Б.4. Запущенная инфраструктура: `docker compose ps` показывает 7 сервисов в состоянии Up — chromadb, jaeger, otel-collector, prometheus, grafana, langfuse + langfuse-db. Это полный observability + RAG-стек, на который опирается приложение через `host.docker.internal`](screens/screen-27.png)
+![Прил. Б.4. Запущенная инфраструктура: `docker compose ps` показывает 7 сервисов в состоянии Up — chromadb, jaeger, otel-collector, prometheus, grafana, langfuse + langfuse-db. Это полный observability + RAG-стек, на который опирается приложение через `host.docker.internal`](screens/screen-27.jpg)
 
 \newpage
 

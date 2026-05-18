@@ -1,0 +1,48 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# --- venv / uv ---
+.venv/
+venv/
+.python-version
+
+# --- secrets ---
+.env
+.env.local
+
+# --- runtime data ---
+runs/
+logs/
+data/episodic.db
+data/checkpoints.sqlite
+data/chroma/
+
+# --- Jupyter ---
+.ipynb_checkpoints/
+*.ipynb_meta
+
+# --- IDE ---
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+
+# --- Docker volumes (если положить локально) ---
+docker-volumes/

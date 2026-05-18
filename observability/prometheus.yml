@@ -1,0 +1,16 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  # Метрики самого приложения (prometheus_client HTTP endpoint)
+  - job_name: niche-research-agent
+    static_configs:
+      - targets: ["host.docker.internal:9464"]
+        labels:
+          service: niche-research-agent
+
+  # Метрики, экспортируемые OTel collector'ом
+  - job_name: otel-collector
+    static_configs:
+      - targets: ["otel-collector:8889"]

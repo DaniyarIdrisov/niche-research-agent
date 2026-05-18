@@ -1,0 +1,196 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "title": "Niche Research Agent",
+  "uid": "niche-research-agent",
+  "tags": ["nra", "llm", "agents"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Total LLM requests (last hour)",
+      "gridPos": {"x": 0, "y": 0, "w": 6, "h": 4},
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(llm_request_total[1h]))"
+        }
+      ],
+      "options": {
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": ""},
+        "graphMode": "area"
+      }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Average LLM latency (p95)",
+      "gridPos": {"x": 6, "y": 0, "w": 6, "h": 4},
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95, sum(rate(llm_request_latency_seconds_bucket[5m])) by (le))"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {"unit": "s", "decimals": 2}
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "JSON parse failures (last hour)",
+      "gridPos": {"x": 12, "y": 0, "w": 6, "h": 4},
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(llm_structured_parse_failures_total[1h]))"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 5},
+              {"color": "red", "value": 20}
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Total tokens (last hour)",
+      "gridPos": {"x": 18, "y": 0, "w": 6, "h": 4},
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(llm_tokens_total[1h]))"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "LLM latency by JSON mode (p50, p95)",
+      "gridPos": {"x": 0, "y": 4, "w": 12, "h": 8},
+      "targets": [
+        {
+          "refId": "p50",
+          "expr": "histogram_quantile(0.5, sum(rate(llm_request_latency_seconds_bucket[5m])) by (le, json_mode))",
+          "legendFormat": "p50 / json={{json_mode}}"
+        },
+        {
+          "refId": "p95",
+          "expr": "histogram_quantile(0.95, sum(rate(llm_request_latency_seconds_bucket[5m])) by (le, json_mode))",
+          "legendFormat": "p95 / json={{json_mode}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {"unit": "s"}
+      }
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Agent node duration p95 (by node)",
+      "gridPos": {"x": 12, "y": 4, "w": 12, "h": 8},
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95, sum(rate(agent_node_duration_seconds_bucket[5m])) by (le, node))",
+          "legendFormat": "{{node}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {"unit": "s"}
+      }
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "LLM throughput (requests/sec) by outcome",
+      "gridPos": {"x": 0, "y": 12, "w": 12, "h": 8},
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(llm_request_total[1m])) by (outcome)",
+          "legendFormat": "{{outcome}}"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Agent retries (per minute)",
+      "gridPos": {"x": 12, "y": 12, "w": 12, "h": 8},
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(agent_retry_total[5m])) by (node)",
+          "legendFormat": "{{node}}"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "RAG retrieve outcome",
+      "gridPos": {"x": 0, "y": 20, "w": 12, "h": 6},
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(rag_retrieve_total[5m])) by (outcome)",
+          "legendFormat": "{{outcome}}"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "RAG chunks returned (p50, p95)",
+      "gridPos": {"x": 12, "y": 20, "w": 12, "h": 6},
+      "targets": [
+        {
+          "refId": "p50",
+          "expr": "histogram_quantile(0.5, sum(rate(rag_chunks_returned_bucket[5m])) by (le))",
+          "legendFormat": "p50"
+        },
+        {
+          "refId": "p95",
+          "expr": "histogram_quantile(0.95, sum(rate(rag_chunks_returned_bucket[5m])) by (le))",
+          "legendFormat": "p95"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "Tokens by kind (prompt / completion)",
+      "gridPos": {"x": 0, "y": 26, "w": 24, "h": 6},
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(llm_tokens_total[5m])) by (kind)",
+          "legendFormat": "{{kind}}"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,139 @@
+# =========================================================================
+# Niche Research Agent — local infra stack
+# Ollama НЕ в этом compose: запускается на хосте, чтобы прокидывание CUDA
+# в контейнер не било по производительности на 1050 Ti.
+# =========================================================================
+
+services:
+
+  # --- Vector DB ---
+  chromadb:
+    image: chromadb/chroma:0.5.20
+    container_name: nra-chromadb
+    ports:
+      - "8001:8000"
+    volumes:
+      - chroma-data:/chroma/chroma
+    environment:
+      - IS_PERSISTENT=TRUE
+      - ANONYMIZED_TELEMETRY=FALSE
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+    restart: unless-stopped
+
+  # --- Tracing: Jaeger all-in-one ---
+  jaeger:
+    image: jaegertracing/all-in-one:1.62
+    container_name: nra-jaeger
+    ports:
+      - "16686:16686"  # UI
+      - "4317:4317"    # OTLP gRPC — на этот порт пишет otel-collector ниже
+      - "4318:4318"    # OTLP HTTP
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    restart: unless-stopped
+
+  # --- OpenTelemetry collector (приложение шлёт сюда, дальше — в Jaeger/Prometheus) ---
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.114.0
+    container_name: nra-otel-collector
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./observability/otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
+    ports:
+      - "4319:4317"    # OTLP gRPC от приложения (4317 уже занят Jaeger)
+      - "8889:8889"    # Prometheus exporter из коллектора
+    depends_on:
+      - jaeger
+    restart: unless-stopped
+
+  # --- Metrics: Prometheus ---
+  prometheus:
+    image: prom/prometheus:v3.0.0
+    container_name: nra-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.retention.time=7d'
+    restart: unless-stopped
+
+  # --- Metrics UI: Grafana ---
+  grafana:
+    image: grafana/grafana:11.3.0
+    container_name: nra-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+  # --- LLM-specific tracing: Langfuse self-hosted ---
+  langfuse-db:
+    image: postgres:16-alpine
+    container_name: nra-langfuse-db
+    environment:
+      - POSTGRES_USER=langfuse
+      - POSTGRES_PASSWORD=langfuse
+      - POSTGRES_DB=langfuse
+    volumes:
+      - langfuse-db:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  langfuse:
+    image: langfuse/langfuse:2
+    container_name: nra-langfuse
+    depends_on:
+      - langfuse-db
+    ports:
+      - "3001:3000"
+    environment:
+      - DATABASE_URL=postgresql://langfuse:langfuse@langfuse-db:5432/langfuse
+      - NEXTAUTH_SECRET=dev-secret-change-me
+      - SALT=dev-salt-change-me
+      - NEXTAUTH_URL=http://localhost:3001
+      - TELEMETRY_ENABLED=false
+      - LANGFUSE_ENABLE_EXPERIMENTAL_FEATURES=true
+    restart: unless-stopped
+
+  # --- Контейнер для WB-парсера (live режим). Read-only FS, drop caps. ---
+  # Описано для документации в docs/ISOLATION.md.
+  # Запускается через `docker compose --profile live up wb-parser` по необходимости.
+  wb-parser:
+    profiles: ["live"]
+    build:
+      context: .
+      dockerfile: docker/wb-parser.Dockerfile
+    container_name: nra-wb-parser
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    networks:
+      - default
+    environment:
+      - WB_SEARCH_URL=${WB_SEARCH_URL}
+      - WB_REQUEST_RATE_PER_SEC=${WB_REQUEST_RATE_PER_SEC}
+
+volumes:
+  chroma-data:
+  prometheus-data:
+  grafana-data:
+  langfuse-db:

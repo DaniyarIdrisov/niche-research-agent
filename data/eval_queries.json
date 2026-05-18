@@ -1,0 +1,179 @@
+{
+  "schema_version": 1,
+  "description": "Эталонный набор запросов для system-level evals. Каждый запрос содержит ожидаемое поведение (а не точный ответ — система генеративная). Метрики: task_completed, verdict_match, scout_min_products, prd_sections_filled, latency_p95.",
+  "queries": [
+    {
+      "id": "q01_toothbrush_basic",
+      "query": "оцени нишу — электрические зубные щётки до 3000 рублей",
+      "category_hint": "electric_toothbrush",
+      "filters": { "max_price": 3000 },
+      "expected": {
+        "task_completed": true,
+        "scout_min_products": 20,
+        "prd_sections_filled": ["goal", "target_audience", "must_have_specs", "nice_to_have_specs", "target_price", "compliance"],
+        "verdict_in": ["go", "no-go", "conditional-go"],
+        "must_mention_in_report": ["оборот", "топ-5", "медианная цена", "УТП"]
+      }
+    },
+    {
+      "id": "q02_toothbrush_premium",
+      "query": "электрические зубные щётки премиум-сегмент 4000-8000 рублей",
+      "category_hint": "electric_toothbrush",
+      "filters": { "min_price": 4000, "max_price": 8000 },
+      "expected": {
+        "task_completed": true,
+        "scout_min_products": 5,
+        "prd_sections_filled": ["goal", "must_have_specs", "target_price"],
+        "verdict_in": ["go", "no-go", "conditional-go"]
+      }
+    },
+    {
+      "id": "q03_dryer_basic",
+      "query": "оцени нишу фенов для волос",
+      "category_hint": "hair_dryer",
+      "filters": {},
+      "expected": {
+        "task_completed": true,
+        "scout_min_products": 20,
+        "prd_sections_filled": ["goal", "must_have_specs", "target_price", "compliance"],
+        "verdict_in": ["go", "no-go", "conditional-go"]
+      }
+    },
+    {
+      "id": "q04_dryer_budget",
+      "query": "фены до 2000 рублей, бюджетный сегмент",
+      "category_hint": "hair_dryer",
+      "filters": { "max_price": 2000 },
+      "expected": {
+        "task_completed": true,
+        "scout_min_products": 5,
+        "verdict_in": ["go", "no-go", "conditional-go"],
+        "must_mention_in_report": ["мощность", "комиссия", "ценовой сегмент"]
+      }
+    },
+    {
+      "id": "q05_dryer_pro",
+      "query": "профессиональные фены 5000-12000 рублей с ионизацией",
+      "category_hint": "hair_dryer",
+      "filters": { "min_price": 5000, "max_price": 12000 },
+      "expected": {
+        "task_completed": true,
+        "scout_min_products": 5,
+        "must_mention_in_report": ["ионизация"]
+      }
+    },
+    {
+      "id": "q06_epilator_basic",
+      "query": "оцени нишу эпиляторов",
+      "category_hint": "epilator",
+      "filters": {},
+      "expected": {
+        "task_completed": true,
+        "scout_min_products": 20,
+        "prd_sections_filled": ["goal", "must_have_specs", "target_price", "compliance"],
+        "verdict_in": ["go", "no-go", "conditional-go"]
+      }
+    },
+    {
+      "id": "q07_epilator_value",
+      "query": "эпиляторы 2000-5000 рублей, средний сегмент",
+      "category_hint": "epilator",
+      "filters": { "min_price": 2000, "max_price": 5000 },
+      "expected": {
+        "task_completed": true,
+        "scout_min_products": 10
+      }
+    },
+    {
+      "id": "q08_epilator_wetdry",
+      "query": "эпиляторы с функцией влажной эпиляции wet&dry",
+      "category_hint": "epilator",
+      "filters": {},
+      "expected": {
+        "task_completed": true,
+        "must_mention_in_report": ["влажн", "wet"]
+      }
+    },
+    {
+      "id": "q09_edge_empty_niche",
+      "query": "оцени нишу — массажёры для кошек с алмазным покрытием",
+      "category_hint": null,
+      "filters": {},
+      "expected": {
+        "task_completed": true,
+        "scout_min_products": 0,
+        "verdict_in": ["no-go", "no-data"],
+        "must_mention_in_report": ["недостаточно данных", "пустая ниша", "out of scope"]
+      },
+      "notes": "Edge case: запрос вне нашего mock-датасета и вне категории МБТ. Система должна это распознать и не галлюцинировать данные."
+    },
+    {
+      "id": "q10_edge_super_narrow",
+      "query": "электрические зубные щётки розового цвета до 1500 рублей с 5 режимами и ионизацией",
+      "category_hint": "electric_toothbrush",
+      "filters": { "max_price": 1500 },
+      "expected": {
+        "task_completed": true,
+        "verdict_in": ["no-go", "conditional-go"],
+        "must_mention_in_report": ["узкий", "малая выборка"]
+      },
+      "notes": "Edge case: фильтр настолько узкий, что под него попадает мало карточек."
+    },
+    {
+      "id": "q11_compare_segments",
+      "query": "сравни ниши электрических зубных щёток до 2000 и до 5000 рублей",
+      "category_hint": "electric_toothbrush",
+      "filters": {},
+      "expected": {
+        "task_completed": true,
+        "must_mention_in_report": ["сегмент", "сравнение"]
+      },
+      "notes": "Стресс-кейс: пользователь хочет сравнение двух подвыборок. Out-of-scope в TZ — система может ответить на основной запрос или явно сказать, что сравнение не поддерживает."
+    },
+    {
+      "id": "q12_verdict_expected_go",
+      "query": "оцени нишу эпиляторов 3000-6000 рублей",
+      "category_hint": "epilator",
+      "filters": { "min_price": 3000, "max_price": 6000 },
+      "expected": {
+        "task_completed": true,
+        "verdict_in": ["go", "conditional-go"],
+        "rationale": "Средний сегмент с достаточным объёмом конкурентов и нормальным разбросом — должен пройти базовые критерии go."
+      }
+    },
+    {
+      "id": "q13_verdict_expected_nogo_oversaturated",
+      "query": "оцени нишу электрических зубных щёток 1000-1500 рублей",
+      "category_hint": "electric_toothbrush",
+      "filters": { "min_price": 1000, "max_price": 1500 },
+      "expected": {
+        "task_completed": true,
+        "verdict_in": ["no-go", "conditional-go"],
+        "must_mention_in_report": ["насыщ", "конкурен", "доля топ"]
+      },
+      "notes": "Ожидаемо насыщенный супер-бюджетный сегмент с высокой концентрацией."
+    },
+    {
+      "id": "q14_compliance_check",
+      "query": "оцени нишу фенов, что нужно для выхода на WB",
+      "category_hint": "hair_dryer",
+      "filters": {},
+      "expected": {
+        "task_completed": true,
+        "must_mention_in_report": ["декларация", "ТР ТС", "EAC"],
+        "prd_sections_filled": ["compliance"]
+      }
+    },
+    {
+      "id": "q15_short_query",
+      "query": "щётки",
+      "category_hint": "electric_toothbrush",
+      "filters": {},
+      "expected": {
+        "task_completed": true,
+        "scout_min_products": 20
+      },
+      "notes": "Очень короткий нечёткий запрос. Система должна сама понять категорию и достать осмысленный топ."
+    }
+  ]
+}

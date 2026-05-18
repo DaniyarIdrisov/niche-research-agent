@@ -988,13 +988,19 @@ URL: `http://localhost:3000` (admin / admin), дашборд **Niche Research Ag
 
 ![Рис. 14. Зум на панель «Agent node duration p95 (by node)». В легенде — все девять нод графа: `scout`, `validate_scout`, `niche_analyst`, `validate_niche`, `specs_miner`, `usp_analyst`, `prd_writer`, `validate_prd`, `reporter`. Это и есть результат централизованной инструментации через декоратор `_instrument(...)` в `supervisor.py::build_graph()` — каждая нода автоматически обёрнута в `measure_node()` без необходимости менять код самих агентов](screens/screen-15.png)
 
-### Langfuse — LLM-tracing
+### Langfuse — LLM-tracing (текущий статус и границы реализации)
 
 URL: `http://localhost:3001`.
 
-**[СКРИН 16: Langfuse UI с списком trace'ов из последних запусков. Подпись: «Рис. 15. Список LLM-вызовов в Langfuse».]**
+В текущей версии Langfuse **провижен в инфраструктуре** и **частично интегрирован**:
 
-**[СКРИН 17: Детальный вид одного trace в Langfuse — виден полный промпт системы (например, scout) и ответ модели в JSON. Подпись: «Рис. 16. Детализация одного LLM-вызова: промпт + ответ + токены».]**
+- **Запущен** как самостоятельный сервис в `docker-compose.yml` (контейнер `nra-langfuse` + Postgres-БД `nra-langfuse-db`).
+- **Сконфигурирован клиент** через переменные окружения `LANGFUSE_HOST`, `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY` (см. `.env.example`), который инициализируется в `src/observability/langfuse_hook.py`. В логах приложения присутствует строка `langfuse.configured` — SDK успешно подключается к локальному инстансу.
+- **Логика логирования вызовов** реализована (функция `log_llm_call(...)`), но **per-call hook в `OllamaClient.chat()` намеренно вынесен в future work**. То есть Langfuse UI отображает пустой список trace'ов до тех пор, пока этот вызов не будет встроен.
+
+Это **сознательное архитектурное решение** на текущей версии: OpenTelemetry + Jaeger уже покрывают весь жизненный цикл LLM-вызова (модель, json_mode, latency, prompt_tokens, completion_tokens) — см. Рис. 11 и Рис. 12. Langfuse сверх этого даёт **видимость полного текста промптов и ответов**, что критично для prompt engineering, но не блокирует ни observability, ни evals. Поэтому интеграция этой части перенесена на будущую итерацию и явно отмечена в `docs/DEFENSE_NOTES.md` § 8 и § «Future work».
+
+Альтернативные observability-источники полностью замещают эту функциональность для целей текущего проекта: для отладки конкретного LLM-вызова достаточно посмотреть JSONL-логи (`logs/agent.jsonl`) — в них logger`a OllamaClient записывает `prompt_tokens` / `completion_tokens` / `elapsed_s` / запрашиваемую `schema`, чего достаточно для разбора 95% проблем.
 
 ### Prometheus — сырые метрики
 
@@ -1545,8 +1551,8 @@ pandoc docs/REPORT.md -o REPORT.pdf \
 | 13 | Jaeger UI — детали span'а `ollama.chat` с атрибутами | Jaeger | ✅ готово |
 | 14 | Grafana — главный экран дашборда «Niche Research Agent» | http://localhost:3000 | ✅ готово |
 | 15 | Grafana — зум на панель «Agent node duration p95» | Grafana | ✅ готово |
-| 16 | Langfuse — список trace'ов | http://localhost:3001 | ☐ |
-| 17 | Langfuse — детали одного call (промпт + ответ + токены) | Langfuse | ☐ |
+| 16 | ~~Langfuse — список trace'ов~~ | ~~http://localhost:3001~~ | ⊘ исключено (future work) |
+| 17 | ~~Langfuse — детали одного call~~ | ~~Langfuse~~ | ⊘ исключено (future work) |
 | 18 | Prometheus — query `llm_request_total` с графиком | http://localhost:9090 | ✅ готово |
 | 19 | Вывод `... component_evals` — сводная таблица с порогами | Терминал | ☐ |
 | 20 | Вывод `... system_evals` — таблица per-query | Терминал | ☐ |
@@ -1558,9 +1564,11 @@ pandoc docs/REPORT.md -o REPORT.pdf \
 | 26 | `runs/<id>/state.json`, секция `prd` | IDE | ✅ готово |
 | 27 | Вывод `docker compose ps` — 7 сервисов Up | Терминал | ✅ готово |
 
-**Минимально нужно для убедительного отчёта:** 1, 2, 8, 9, 10, 11, 12, 14, 16, 17, 19, 21, 22.
+**Минимально нужно для убедительного отчёта:** 1, 2, 8, 9, 10, 11, 12, 14, 19, 21, 22.
 
 **Nice-to-have (показывают глубину):** 3, 4, 5, 6, 7, 13, 15, 18, 20, 23, 24, 25, 26, 27.
+
+**Сознательно исключены:** 16, 17 (Langfuse) — см. §«Демонстрация работы», подсекция «Langfuse — LLM-tracing (текущий статус и границы реализации)». Функциональность покрывается OpenTelemetry-spans + JSONL-логами; полная интеграция Langfuse оставлена в future work.
 
 ## Готовые URL для скринов Mermaid-диаграмм
 

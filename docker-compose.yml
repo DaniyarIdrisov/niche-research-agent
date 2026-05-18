@@ -8,7 +8,9 @@ services:
 
   # --- Vector DB ---
   chromadb:
-    image: chromadb/chroma:0.5.20
+    # 0.5.20 имеет баг в обработке v2 collections API (KeyError: '_type').
+    # 0.5.23 фиксит, остаётся в той же мажорной линии — клиент совместим.
+    image: chromadb/chroma:0.5.23
     container_name: nra-chromadb
     ports:
       - "8001:8000"

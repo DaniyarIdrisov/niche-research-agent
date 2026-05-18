@@ -1411,7 +1411,7 @@ niche-research-agent/
 
 **[СКРИН 26: Фрагмент `runs/<run-id>/state.json` с секцией `prd` — все поля заполнены. Подпись: «Прил. Б.3. Сгенерированный PRD в JSON».]**
 
-**[СКРИН 27: Вывод команды `docker compose ps` — все 6 сервисов в состоянии Up. Подпись: «Прил. Б.4. Запущенная инфраструктура».]**
+![Прил. Б.4. Запущенная инфраструктура: `docker compose ps` показывает 7 сервисов в состоянии Up — chromadb, jaeger, otel-collector, prometheus, grafana, langfuse + langfuse-db. Это полный observability + RAG-стек, на который опирается приложение через `host.docker.internal`](screens/screen-27.png)
 
 \newpage
 
@@ -1556,7 +1556,7 @@ pandoc docs/REPORT.md -o REPORT.pdf \
 | 24 | Фрагмент `data/mock_wb_products.json` в IDE | IDE | ✅ готово |
 | 25 | `knowledge_base/compliance/eac_certification.md` в IDE | IDE | ✅ готово |
 | 26 | `runs/<id>/state.json`, секция `prd` | IDE | ☐ |
-| 27 | Вывод `docker compose ps` — 6 сервисов Up | Терминал | ☐ |
+| 27 | Вывод `docker compose ps` — 7 сервисов Up | Терминал | ✅ готово |
 
 **Минимально нужно для убедительного отчёта:** 1, 2, 8, 9, 10, 11, 12, 14, 16, 17, 19, 21, 22.
 

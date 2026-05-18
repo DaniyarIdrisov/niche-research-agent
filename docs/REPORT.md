@@ -1405,7 +1405,7 @@ niche-research-agent/
 
 # Приложение B. Снимок ключевых артефактов
 
-**[СКРИН 24: Фрагмент `data/mock_wb_products.json` открытый в IDE — видны 2-3 карточки с полями sku, name, specs (с синонимами в ключах). Подпись: «Прил. Б.1. Фрагмент mock-датасета».]**
+![Прил. Б.1. Фрагмент `data/mock_wb_products.json`: первая карточка использует ключ `"автономность"`, вторая — `"режимов чистки"` вместо `"режимы работы"` и совсем без `"частота движений"`. Именно эти синонимы и пропуски моделируют реальный «шум» данных WB и являются материалом для нормализатора (`src/tools/specs_normalizer.py`) и Specs Miner](screens/screen-24.png)
 
 **[СКРИН 25: Фрагмент `knowledge_base/compliance/eac_certification.md` открытый в IDE. Подпись: «Прил. Б.2. KB-документ о маркировке EAC».]**
 
@@ -1537,26 +1537,26 @@ pandoc docs/REPORT.md -o REPORT.pdf \
 | 5 | Hybrid retrieval Mermaid | `scripts/render_mermaid.py` | ✅ готово |
 | 6 | Любой `skills/*/SKILL.md` с YAML frontmatter | IDE | ✅ готово |
 | 7 | Observability data flow Mermaid | `scripts/render_mermaid.py` | ✅ готово |
-| 8 | Вывод `uv run python -m src.main check` | Терминал |
-| 9 | Вывод `... research "..."` — начало (Run ID + таблица) | Терминал |
-| 10 | Вывод `... research "..."` — конец (отчёт + Verdict) | Терминал |
-| 11 | `runs/<id>/report.md` в IDE с preview | VS Code / Obsidian |
-| 12 | Jaeger UI — список trace'ов, выбрать один с раскрытыми spans | http://localhost:16686 |
-| 13 | Jaeger UI — детали span'а `ollama.chat` с атрибутами | Jaeger |
-| 14 | Grafana — главный экран дашборда «Niche Research Agent» | http://localhost:3000 |
-| 15 | Grafana — зум на панель «Agent node duration p95» | Grafana |
-| 16 | Langfuse — список trace'ов | http://localhost:3001 |
-| 17 | Langfuse — детали одного call (промпт + ответ + токены) | Langfuse |
-| 18 | Prometheus — query `llm_request_total` с графиком | http://localhost:9090 |
-| 19 | Вывод `... component_evals` — сводная таблица с порогами | Терминал |
-| 20 | Вывод `... system_evals` — таблица per-query | Терминал |
-| 21 | Jupyter — bar chart component metrics с порогами | jupyter lab |
-| 22 | Jupyter — pie chart pass rate + verdicts + judge histogram | Jupyter |
-| 23 | Jupyter — bar chart latency per query | Jupyter |
-| 24 | Фрагмент `data/mock_wb_products.json` в IDE | IDE |
-| 25 | `knowledge_base/compliance/eac_certification.md` в IDE | IDE |
-| 26 | `runs/<id>/state.json`, секция `prd` | IDE |
-| 27 | Вывод `docker compose ps` — 6 сервисов Up | Терминал |
+| 8 | Вывод `uv run python -m src.main check` | Терминал | ☐ |
+| 9 | Вывод `... research "..."` — начало (Run ID + таблица) | Терминал | ☐ |
+| 10 | Вывод `... research "..."` — конец (отчёт + Verdict) | Терминал | ☐ |
+| 11 | `runs/<id>/report.md` в IDE с preview | VS Code / Obsidian | ☐ |
+| 12 | Jaeger UI — список trace'ов, выбрать один с раскрытыми spans | http://localhost:16686 | ☐ |
+| 13 | Jaeger UI — детали span'а `ollama.chat` с атрибутами | Jaeger | ☐ |
+| 14 | Grafana — главный экран дашборда «Niche Research Agent» | http://localhost:3000 | ☐ |
+| 15 | Grafana — зум на панель «Agent node duration p95» | Grafana | ☐ |
+| 16 | Langfuse — список trace'ов | http://localhost:3001 | ☐ |
+| 17 | Langfuse — детали одного call (промпт + ответ + токены) | Langfuse | ☐ |
+| 18 | Prometheus — query `llm_request_total` с графиком | http://localhost:9090 | ☐ |
+| 19 | Вывод `... component_evals` — сводная таблица с порогами | Терминал | ☐ |
+| 20 | Вывод `... system_evals` — таблица per-query | Терминал | ☐ |
+| 21 | Jupyter — bar chart component metrics с порогами | jupyter lab | ☐ |
+| 22 | Jupyter — pie chart pass rate + verdicts + judge histogram | Jupyter | ☐ |
+| 23 | Jupyter — bar chart latency per query | Jupyter | ☐ |
+| 24 | Фрагмент `data/mock_wb_products.json` в IDE | IDE | ✅ готово |
+| 25 | `knowledge_base/compliance/eac_certification.md` в IDE | IDE | ☐ |
+| 26 | `runs/<id>/state.json`, секция `prd` | IDE | ☐ |
+| 27 | Вывод `docker compose ps` — 6 сервисов Up | Терминал | ☐ |
 
 **Минимально нужно для убедительного отчёта:** 1, 2, 8, 9, 10, 11, 12, 14, 16, 17, 19, 21, 22.
 

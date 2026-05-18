@@ -945,7 +945,7 @@ uv run python -m src.main check
 - Mock OK / путь к датасету.
 - LLM OK / ping-ответ модели.
 
-**[СКРИН 8: Вывод команды `uv run python -m src.main check` в терминале. Подпись: «Рис. 7. Health-check системы».]**
+![Рис. 7. Health-check системы: четыре зелёные строки `INFO` подтверждают инициализацию observability (Loguru → `logs/agent.jsonl`, Prometheus endpoint на :9464, OTel-экспортер), затем последовательная проверка доступности Ollama, наличия mock-датасета и ответа LLM. `LLM OK: pong` означает успешный round-trip к Ollama с реальным инференсом модели `qwen2.5:3b-instruct-q4_K_M`](screens/screen-08.jpg)
 
 ## Запуск ресёрча ниши
 
@@ -1537,7 +1537,7 @@ pandoc docs/REPORT.md -o REPORT.pdf \
 | 5 | Hybrid retrieval Mermaid | `scripts/render_mermaid.py` | ✅ готово |
 | 6 | Любой `skills/*/SKILL.md` с YAML frontmatter | IDE | ✅ готово |
 | 7 | Observability data flow Mermaid | `scripts/render_mermaid.py` | ✅ готово |
-| 8 | Вывод `uv run python -m src.main check` | Терминал | ☐ |
+| 8 | Вывод `uv run python -m src.main check` | Терминал | ✅ готово |
 | 9 | Вывод `... research "..."` — начало (Run ID + таблица) | Терминал | ☐ |
 | 10 | Вывод `... research "..."` — конец (отчёт + Verdict) | Терминал | ☐ |
 | 11 | `runs/<id>/report.md` в IDE с preview | VS Code / Obsidian | ☐ |

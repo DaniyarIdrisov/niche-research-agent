@@ -1407,7 +1407,7 @@ niche-research-agent/
 
 ![Прил. Б.1. Фрагмент `data/mock_wb_products.json`: первая карточка использует ключ `"автономность"`, вторая — `"режимов чистки"` вместо `"режимы работы"` и совсем без `"частота движений"`. Именно эти синонимы и пропуски моделируют реальный «шум» данных WB и являются материалом для нормализатора (`src/tools/specs_normalizer.py`) и Specs Miner](screens/screen-24.png)
 
-**[СКРИН 25: Фрагмент `knowledge_base/compliance/eac_certification.md` открытый в IDE. Подпись: «Прил. Б.2. KB-документ о маркировке EAC».]**
+![Прил. Б.2. KB-документ `knowledge_base/compliance/eac_certification.md`: YAML frontmatter (`title`, `category: compliance`), затем структурированные секции «Когда обязательна / Где наносится / Связь с декларациями / Что не EAC / Чек-лист перед запуском карточки». Этот файл — один из 10 в `knowledge_base/`, которые ингестятся в ChromaDB командой `python -m src.memory.semantic ingest knowledge_base/`](screens/screen-25.png)
 
 **[СКРИН 26: Фрагмент `runs/<run-id>/state.json` с секцией `prd` — все поля заполнены. Подпись: «Прил. Б.3. Сгенерированный PRD в JSON».]**
 
@@ -1554,7 +1554,7 @@ pandoc docs/REPORT.md -o REPORT.pdf \
 | 22 | Jupyter — pie chart pass rate + verdicts + judge histogram | Jupyter | ☐ |
 | 23 | Jupyter — bar chart latency per query | Jupyter | ☐ |
 | 24 | Фрагмент `data/mock_wb_products.json` в IDE | IDE | ✅ готово |
-| 25 | `knowledge_base/compliance/eac_certification.md` в IDE | IDE | ☐ |
+| 25 | `knowledge_base/compliance/eac_certification.md` в IDE | IDE | ✅ готово |
 | 26 | `runs/<id>/state.json`, секция `prd` | IDE | ☐ |
 | 27 | Вывод `docker compose ps` — 6 сервисов Up | Терминал | ☐ |
 

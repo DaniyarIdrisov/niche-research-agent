@@ -326,7 +326,16 @@ Wildberries — крупнейший по обороту маркетплейс 
 115 mock-карточек
 ```
 
-**[СКРИН 1: Дерево проекта в IDE — раскрытое до 2-3 уровня вложенности — для иллюстрации структуры.]**
+Диаграмма классов разделена на два смысловых блока:
+
+- **(а) Доменные типы** — Pydantic-схемы, которыми оперируют агенты. Это «язык» системы: всё, что передаётся между нодами графа или возвращается из tools, имеет один из этих типов.
+- **(б) State + инфраструктурные клиенты** — центральный `AgentState` (TypedDict, переносится по графу LangGraph), `OllamaClient` (LLM-шлюз с repair-loop), `SemanticMemory` (RAG-обёртка над ChromaDB + BM25 + опц. реранкером), и общая `Settings` (pydantic-settings, читает `.env`).
+
+Процедурные инструменты из `src/tools/` (`calculator`, `specs_normalizer`, `usp_classifier`, `wb_parser`, `prd_validator`, `unit_economics`) реализованы как модули с функциями, а не как классы — это сознательный pythonic-выбор для stateless-логики.
+
+![Рис. 1а. Доменные типы данных (Pydantic-схемы)](screens/screen-01a.png)
+
+![Рис. 1б. State и инфраструктурные клиенты](screens/screen-01b.png)
 
 \newpage
 
@@ -1521,7 +1530,7 @@ pandoc docs/REPORT.md -o REPORT.pdf \
 
 | № | Что снять | Откуда | Статус |
 |---|---|---|---|
-| 1 | Дерево проекта (Explorer в IDE, 2-3 уровня) | VS Code / Cursor / WebStorm | ☐ |
+| 1a + 1b | Диаграмма классов (доменные типы + state/infra) | `scripts/render_mermaid.py` | ✅ готово |
 | 2 | High-level Mermaid из § «Архитектура» | `scripts/render_mermaid.py` | ✅ готово |
 | 3 | Фрагмент `supervisor.py::build_graph()` | IDE | ☐ |
 | 4 | Memory layers Mermaid | `scripts/render_mermaid.py` | ✅ готово |

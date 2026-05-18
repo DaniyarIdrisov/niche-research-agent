@@ -29,6 +29,174 @@ OUT_DIR = ROOT / "docs" / "screens"
 # Mermaid sources (1:1 копии из docs/REPORT.md)
 # ---------------------------------------------------------------------------
 
+DIAGRAM_1A_DOMAIN = """classDiagram
+    direction LR
+
+    class Product {
+      <<Pydantic>>
+      +int sku
+      +str category
+      +str name
+      +int price
+      +float rating
+      +int reviews_count
+      +str seller
+      +dict specs
+      +total_sales_proxy() int
+    }
+
+    class QueryFilters {
+      <<Pydantic>>
+      +str category
+      +int min_price
+      +int max_price
+      +list keywords
+    }
+
+    class NicheInsight {
+      <<Pydantic>>
+      +str category
+      +str statement
+    }
+
+    class NicheMetrics {
+      <<Pydantic>>
+      +int n_products
+      +int revenue_top_30
+      +float top_share
+      +int price_median
+      +int price_p25
+      +int price_p75
+      +float share_mature
+      +float share_new
+      +list insights
+    }
+
+    class SpecFrequency {
+      <<Pydantic>>
+      +str canonical_key
+      +str display_name
+      +int frequency
+      +int top_n
+      +list typical_values
+    }
+
+    class SpecsSummary {
+      <<Pydantic>>
+      +int top_n
+      +list must_have
+      +list nice_to_have
+      +list rare
+    }
+
+    class UspItem {
+      <<Pydantic>>
+      +str seller
+      +str phrase
+      +UspType usp_type
+    }
+
+    class UspMatrix {
+      <<Pydantic>>
+      +list items
+      +dict type_distribution
+      +list gaps
+    }
+
+    class PRD {
+      <<Pydantic>>
+      +str title
+      +str goal
+      +str target_audience
+      +list must_have_specs
+      +list nice_to_have_specs
+      +list differentiation
+      +dict target_price
+      +list compliance
+      +list risks
+    }
+
+    NicheMetrics o-- NicheInsight
+    SpecsSummary o-- SpecFrequency
+    UspMatrix o-- UspItem
+"""
+
+
+DIAGRAM_1B_INFRA = """classDiagram
+    direction TB
+
+    class AgentState {
+      <<TypedDict>>
+      +str query
+      +str run_id
+      +QueryFilters filters
+      +list products
+      +dict niche_metrics
+      +dict specs_summary
+      +dict usp_analysis
+      +dict prd
+      +str report
+      +str verdict
+      +list errors
+      +dict retries
+    }
+
+    class OllamaClient {
+      +str llm_model
+      +str embed_model
+      +int num_ctx
+      +chat(msgs, temp, json_mode) dict
+      +chat_text(msgs, temp) str
+      +chat_structured(msgs, schema) T
+      +embed(texts) list
+    }
+
+    class SemanticMemory {
+      -collection
+      -_BM25Store bm25
+      -_Reranker reranker
+      +ingest(kb_dir) int
+      +retrieve(query, k) list
+      +health() dict
+    }
+
+    class RetrievedChunk {
+      <<dataclass>>
+      +str text
+      +str source
+      +float score
+      +dict metadata
+    }
+
+    class Settings {
+      <<pydantic_settings>>
+      +str data_source
+      +str ollama_llm_model
+      +int max_retries_per_node
+      +float rag_dense_weight
+      +bool rag_use_reranker
+    }
+
+    class QueryFilters
+    class Product
+    class NicheMetrics
+    class SpecsSummary
+    class UspMatrix
+    class PRD
+
+    AgentState ..> QueryFilters
+    AgentState ..> Product
+    AgentState ..> NicheMetrics
+    AgentState ..> SpecsSummary
+    AgentState ..> UspMatrix
+    AgentState ..> PRD
+
+    SemanticMemory ..> RetrievedChunk
+    SemanticMemory ..> OllamaClient
+    OllamaClient ..> Settings
+    SemanticMemory ..> Settings
+"""
+
 DIAGRAM_2_ARCHITECTURE = """flowchart TD
     CLI[CLI: Typer + Rich] --> SUP{Supervisor<br/>LangGraph}
     SUP --> SCOUT[Scout]
@@ -94,10 +262,12 @@ DIAGRAM_7_OBSERVABILITY = """flowchart TD
 """
 
 DIAGRAMS = [
-    (2, "Архитектура мультиагентной системы", DIAGRAM_2_ARCHITECTURE),
-    (4, "Трёхуровневая система памяти", DIAGRAM_4_MEMORY),
-    (5, "Гибридный retrieval: dense + sparse + rerank", DIAGRAM_5_RAG),
-    (7, "Поток данных observability", DIAGRAM_7_OBSERVABILITY),
+    ("01a", "Диаграмма классов: доменные типы (Pydantic-схемы)", DIAGRAM_1A_DOMAIN),
+    ("01b", "Диаграмма классов: state + инфраструктурные клиенты", DIAGRAM_1B_INFRA),
+    ("02", "Архитектура мультиагентной системы", DIAGRAM_2_ARCHITECTURE),
+    ("04", "Трёхуровневая система памяти", DIAGRAM_4_MEMORY),
+    ("05", "Гибридный retrieval: dense + sparse + rerank", DIAGRAM_5_RAG),
+    ("07", "Поток данных observability", DIAGRAM_7_OBSERVABILITY),
 ]
 
 
@@ -112,15 +282,27 @@ def _encode(source: str) -> str:
     return raw.rstrip("=")
 
 
-def _render(source: str, *, dest: Path) -> int:
-    """Возвращает размер записанного PNG в байтах. Бросает на сетевых ошибках."""
+def _render(source: str, *, dest: Path, width: int = 1800) -> int:
+    """
+    Возвращает размер записанного PNG в байтах. Бросает на сетевых ошибках.
+
+    `width` — целевая ширина PNG в пикселях. По умолчанию 1800 — комфортно
+    для печати/PDF и читабельно даже на большой диаграмме классов с десятком
+    блоков. Mermaid.ink требует width (или height) если используется scale,
+    поэтому всегда задаём width явно.
+    """
     encoded = _encode(source)
-    # bgColor=FFFFFF — чистый белый фон, лучше встаёт в PDF
-    url = f"https://mermaid.ink/img/{encoded}?type=png&bgColor=FFFFFF"
+    # bgColor=FFFFFF — чистый белый фон, лучше встаёт в PDF.
+    url = f"https://mermaid.ink/img/{encoded}?type=png&bgColor=FFFFFF&width={width}"
 
     req = urllib.request.Request(url, headers={"User-Agent": "niche-research-agent/1.0"})
-    with urllib.request.urlopen(req, timeout=60) as resp:
-        data = resp.read()
+    try:
+        with urllib.request.urlopen(req, timeout=60) as resp:
+            data = resp.read()
+    except urllib.error.HTTPError as e:
+        body = e.read() if hasattr(e, "read") else b""
+        # Тело ошибки от mermaid.ink обычно содержит конкретный parse-error
+        raise RuntimeError(f"HTTP {e.code}: {body[:500].decode('utf-8', errors='replace')}") from e
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_bytes(data)
     return len(data)
@@ -128,23 +310,28 @@ def _render(source: str, *, dest: Path) -> int:
 
 def main() -> int:
     print(f"Output dir: {OUT_DIR}")
-    failed: list[tuple[int, str]] = []
+    failed: list[tuple[str, str]] = []
+    # Подчищаем устаревший единый screen-01.png если остался от прежней версии
+    legacy = OUT_DIR / "screen-01.png"
+    if legacy.exists():
+        legacy.unlink()
+        print(f"  removed legacy {legacy.name}")
     for num, title, source in DIAGRAMS:
-        dest = OUT_DIR / f"screen-{num:02d}.png"
+        dest = OUT_DIR / f"screen-{num}.png"
         try:
             n = _render(source, dest=dest)
-            print(f"  screen-{num:02d}.png OK   {n:>7} bytes   ({title})")
+            print(f"  screen-{num}.png OK   {n:>7} bytes   ({title})")
         except urllib.error.URLError as e:
-            print(f"  screen-{num:02d}.png FAIL ({e})", file=sys.stderr)
-            failed.append((num, str(e)))
+            print(f"  screen-{num}.png FAIL ({e})", file=sys.stderr)
+            failed.append((str(num), str(e)))
         except Exception as e:
-            print(f"  screen-{num:02d}.png FAIL ({type(e).__name__}: {e})", file=sys.stderr)
-            failed.append((num, str(e)))
+            print(f"  screen-{num}.png FAIL ({type(e).__name__}: {e})", file=sys.stderr)
+            failed.append((str(num), str(e)))
 
     if failed:
         print(f"\n{len(failed)} diagrams failed:", file=sys.stderr)
         for num, err in failed:
-            print(f"  - screen-{num:02d}: {err}", file=sys.stderr)
+            print(f"  - screen-{num}: {err}", file=sys.stderr)
         return 1
     print(f"\nAll {len(DIAGRAMS)} diagrams rendered.")
     return 0
